@@ -1,5 +1,7 @@
+#!/bin/python3
+
 from PIL import Image, ImageDraw, ImageFont
-from lib.waveshare_epd import epd7in3g
+from lib import epd7in3g
 import requests
 import zipfile
 import time
@@ -8,14 +10,14 @@ import io
 font_url = "https://dl.dafont.com/dl/?f=gunny_rewritten"
 
 def callendar_skelet(draw_skelet, headline, headline_font, date_font, hour_font, day_segment):
-    x1_skelet = 20
-    y1_skelet = 70
-    x2_sekelt = 780
-    y2_skelet = 460
+    x1_skelet = (epd.width / 100)  * 1
+    y1_skelet = (epd.height / 100) * 10
+    x2_sekelt = epd.width  - x1_skelet
+    y2_skelet = epd.height - x1_skelet
 
     # OUTER BOX and HEADLINE TEXT
     draw_skelet.rounded_rectangle([(x1_skelet, y1_skelet), (x2_sekelt, y2_skelet)], radius=5 , outline=epd.BLACK, width=5, corners=(True, True, True, True))
-    draw_skelet.text((400, 20), headline, fill=epd.BLACK, font=headline_font, anchor="mt")
+    draw_skelet.text((epd.width / 2,  y1_skelet / 2), headline, fill=epd.BLACK, font=headline_font, anchor="mm")
 
     # Get last Monday
     now = time.time()
@@ -31,14 +33,14 @@ def callendar_skelet(draw_skelet, headline, headline_font, date_font, hour_font,
         HEADER_SIZE = 28
         COLLUM_WIDTH = ((x2_sekelt - x1_skelet) / 7 )
         GAP = (COLLUM_WIDTH / 100) * 8
-        
+
         # HEAD
         x1_header = x1_skelet + (day * COLLUM_WIDTH) + GAP
         y1_header = y1_skelet + GAP
         x2_header = x1_header + COLLUM_WIDTH - (GAP * 2)
         y2_header = y1_header + HEADER_SIZE
         draw_skelet.rounded_rectangle([(x1_header, y1_header), (x2_header, y2_header)], radius=3, outline=epd.BLACK, width=3, corners=(True, True, False, False))
-        
+
         # DATE TEXT
         date = time.localtime(now + (day * 60 * 60 * 24))
         switch = {
@@ -57,9 +59,9 @@ def callendar_skelet(draw_skelet, headline, headline_font, date_font, hour_font,
         x1_body = x1_header
         y1_body = y2_header + (GAP / 2)
         x2_body = x1_body + COLLUM_WIDTH - (GAP * 2)
-        y2_body = y2_skelet - GAP 
+        y2_body = y2_skelet - GAP
         draw_skelet.rounded_rectangle([(x1_body, y1_body), (x2_body, y2_body)], radius=2, outline=epd.BLACK, width=3, corners=(False, False, True, True))
-    
+
         # HOURS
         HOUR_GAP = (y2_body - y1_body) / day_segment
         for hour in range(day_segment):
@@ -82,19 +84,19 @@ def callendar_skelet(draw_skelet, headline, headline_font, date_font, hour_font,
 
 def get_font(url):
     header = {
-        "Accept": "zip-file" 
+        "Accept": "zip-file"
     }
     response = requests.get(url=url, headers=header, stream=True)
     if response.ok:
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
         font = zip_file.open('gnyrwn971.ttf')
-    
+
     return font
 
 epd = epd7in3g.EPD()
 ImageFont.load_default()
-font08 = ImageFont.truetype(font=get_font(font_url), size=8)
-font15 = ImageFont.truetype(font=get_font(font_url), size=15)
+font10 = ImageFont.truetype(font=get_font(font_url), size=10)
+font18 = ImageFont.truetype(font=get_font(font_url), size=18)
 font30 = ImageFont.truetype(font=get_font(font_url), size=30)
 font50 = ImageFont.truetype(font=get_font(font_url), size=50)
 
@@ -102,6 +104,9 @@ full_frame = (epd.width, epd.height)
 
 image = Image.new("RGB", full_frame, epd.WHITE)
 draw = ImageDraw.Draw(image)
-callendar_skelet(draw, "Test", font50, font15, font08, 24)
+callendar_skelet(draw, "Miluji tě", font50, font18, font10, 12)
 
+epd.init()
+epd.Clear()
 epd.display(epd.getbuffer(image))
+epd.sleep()
