@@ -8,6 +8,7 @@ class callendar():
     def __init__(self, width:int, height:int, font_url:str):
         self.setResolution(width, height)
         self.setFont(font_url)
+        self.now = time.time()
         
     def setResolution(self, width, height):
         self.width  = width
@@ -18,7 +19,7 @@ class callendar():
         self.font18 = ImageFont.truetype(font=self.download_font(font_url), size=18)
         self.font50 = ImageFont.truetype(font=self.download_font(font_url), size=50)
 
-    def download_font(url):
+    def download_font(self, url:str):
         from zipfile import ZipFile
         import requests
         import io
@@ -33,28 +34,55 @@ class callendar():
                     font = zip_file.open(file.filename)
         
         return font
+    
+    def getMonday(self):
+        monday          = self.now
+        days_to_monday  = time.gmtime(monday).tm_wday
+        hrs_to_midnight = time.gmtime(monday).tm_hour
+        min_to_midnight = time.gmtime(monday).tm_min
+        sec_to_midnight = time.gmtime(monday).tm_sec
+        
+        while (days_to_monday > 0):
+            monday = monday - (60 * 60 * 24)
+            days_to_monday -= 1
+        
+        while (hrs_to_midnight > 0):
+            monday = monday - (60 * 60)
+            hrs_to_midnight -= 1
+
+        while (min_to_midnight > 0):
+            monday = monday - 60
+            min_to_midnight -= 1
+
+        while (sec_to_midnight > 0):
+            monday = monday - 1
+            sec_to_midnight -= 1
+        
+        return int(monday)
 
     def draw_callendar_skelet(self, headline:str, day_segment:int):
-        image = Image.new("RGB", (self.width, self.height), "white")
-        draw  = ImageDraw.Draw(image)
-
         x1_skelet = (self.width / 100)  * 1
         y1_skelet = (self.height / 100) * 10
         x2_sekelt = self.width  - x1_skelet
         y2_skelet = self.height - x1_skelet
 
+        switch_day = {
+            0: ["Po", "black"],
+            1: ["Út", "black"],
+            2: ["St", "black"],
+            3: ["Čt", "black"],
+            4: ["Pá", "black"],
+            5: ["So", "red"],
+            6: ["Ne", "red"]
+        }
+
+        # CREATE BLANK IMAGE AND START DRAWING
+        image = Image.new("RGB", (self.width, self.height), "white")
+        draw  = ImageDraw.Draw(image)
+
         # OUTER BOX and HEADLINE TEXT
         draw.rounded_rectangle([(x1_skelet, y1_skelet), (x2_sekelt, y2_skelet)], radius=5 , outline="black", width=5, corners=(True, True, True, True))
         draw.text((self.width / 2,  y1_skelet / 2), headline, fill="black", font=self.font50, anchor="mm")
-
-        # GET last Monday
-        now            = time.time()
-        monday         = time.localtime(now)
-        days_to_monday = monday.tm_wday
-        
-        while (days_to_monday > 0):
-            now = now - (60 * 60 * 24)
-            days_to_monday -= 1
 
         # BODY
         for day in range(7):
@@ -71,18 +99,9 @@ class callendar():
             draw.rounded_rectangle([(x1_header, y1_header), (x2_header, y2_header)], radius=3, outline="black", width=3, corners=(True, True, False, False))
 
             # DATE TEXT
-            date = time.localtime(now + (day * 60 * 60 * 24))
-            switch = {
-                0: ["Po", "black"],
-                1: ["Út", "black"],
-                2: ["St", "black"],
-                3: ["Čt", "black"],
-                4: ["Pá", "black"],
-                5: ["So", "red"],
-                6: ["Ne", "red"]
-            }
-            date_print = f"{switch.get(date.tm_wday)[0]} {date.tm_mday}.{date.tm_mon}.{date.tm_year}"
-            draw.text((x1_header + 4, y2_header), date_print, font=self.font18, fill=switch.get(date.tm_wday)[1], anchor="ld")
+            date = time.gmtime(self.getMonday() + (day * 60 * 60 * 24))
+            date_print = f"{switch_day.get(date.tm_wday)[0]} {date.tm_mday}.{date.tm_mon}.{date.tm_year}"
+            draw.text((x1_header + 4, y2_header), date_print, font=self.font18, fill=switch_day.get(date.tm_wday)[1], anchor="ld")
 
             # DAY
             x1_body = x1_header
@@ -99,7 +118,7 @@ class callendar():
                 x2_hour = x2_body
                 y2_hour = y1_hour
                 draw.line([(x1_hour, y1_hour), (x2_hour, y2_hour)], fill="black", width=1)
-                hour_print = f"{time.localtime(((hour * 60 * 60) * (24 / day_segment)) - (60 * 60)).tm_hour}:00"
+                hour_print = f"{time.gmtime(((hour * 60 * 60) * (24 / day_segment))).tm_hour}:00"
                 draw.text((x1_hour + (GAP / 2), y1_hour + (GAP / 2)), hour_print, font=self.font10, fill="black", anchor="lt")
 
             # WEEKEND
